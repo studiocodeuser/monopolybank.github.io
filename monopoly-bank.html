@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>Spielbank – Monopoly-Verwaltung</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17231d;
+      --muted: #647168;
+      --paper: #f5f4ef;
+      --card: #fffefa;
+      --line: #e4e6dc;
+      --green: #147d52;
+      --green-dark: #0e6040;
+      --green-soft: #e7f4eb;
+      --orange: #e98845;
+      --red: #b9453c;
+      --shadow: 0 16px 40px rgb(34 48 38 / 8%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 12% 0%, rgb(232 242 226 / 72%), transparent 34rem),
+        var(--paper);
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 26px 0 44px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 14px;
+      color: white;
+      background: var(--green);
+      font-size: 21px;
+      font-weight: 800;
+      box-shadow: 0 6px 16px rgb(20 125 82 / 22%);
+    }
+    .brand-name { font-size: 16px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-caption { margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .status-pill { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; background: rgb(255 254 250 / 75%); color: var(--muted); font-size: 12px; font-weight: 650; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #54a96f; }
+
+    .setup-wrap { display: grid; min-height: 540px; place-items: center; }
+    .setup-card { width: min(690px, 100%); padding: clamp(24px, 5vw, 46px); border: 1px solid var(--line); border-radius: 28px; background: var(--card); box-shadow: var(--shadow); }
+    .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 10px 0 9px; font-size: clamp(30px, 5vw, 42px); letter-spacing: -.055em; line-height: 1.08; }
+    .intro { max-width: 500px; margin: 0; color: var(--muted); line-height: 1.6; }
+    .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 28px; }
+    .field { display: grid; gap: 8px; }
+    .field label, .field-title { color: #3e4a42; font-size: 12px; font-weight: 750; }
+    .field input, .field select, .money-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 13px;
+      border: 1px solid #dfe3d9;
+      border-radius: 12px;
+      outline: none;
+      color: var(--ink);
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input:focus, .field select:focus, .money-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgb(20 125 82 / 12%); }
+    .mode-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 24px 0 0; padding: 15px 16px; border: 1px solid var(--line); border-radius: 15px; background: #fafaf6; }
+    .mode-copy strong { display: block; font-size: 13px; }
+    .mode-copy span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .switch { position: relative; flex: 0 0 auto; width: 46px; height: 27px; }
+    .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .switch-track { position: absolute; inset: 0; border-radius: 99px; background: #cbd1c7; transition: background .2s; }
+    .switch-track::after { position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; content: ""; transition: transform .2s; }
+    .switch input:checked + .switch-track { background: var(--green); }
+    .switch input:checked + .switch-track::after { transform: translateX(19px); }
+    .switch input:focus-visible + .switch-track { outline: 3px solid rgb(20 125 82 / 25%); outline-offset: 2px; }
+    .players-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 19px; }
+    .player-setup { display: grid; grid-template-columns: 1fr 130px; align-items: end; gap: 9px; }
+    .player-setup .field { min-width: 0; }
+    .player-setup .field input { min-width: 0; }
+    .conditional { display: none; }
+    .conditional.visible { display: grid; }
+    .setup-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 25px; }
+    .hint { margin-right: auto; color: var(--muted); font-size: 11px; }
+    .setup-guidance { margin-right: auto; }
+    .setup-guidance .hint { margin-right: 0; }
+    .chance-display { display: block; margin-top: 5px; color: var(--green-dark); font-size: 11px; font-weight: 700; }
+    .primary, .secondary, .quiet-button {
+      min-height: 45px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 750;
+      transition: transform .15s, background .15s, box-shadow .15s;
+    }
+    .primary { color: white; background: var(--green); box-shadow: 0 7px 16px rgb(20 125 82 / 18%); }
+    .primary:hover { background: var(--green-dark); transform: translateY(-1px); }
+    .secondary { color: #3a493e; background: #eef0e9; }
+    .secondary:hover, .quiet-button:hover { background: #e4e8df; }
+    .quiet-button { min-height: 38px; padding: 0 12px; color: var(--muted); background: transparent; font-size: 12px; }
+
+    .game { display: none; }
+    .game.active { display: block; }
+    .game-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 0 20px; }
+    .game-heading h1 { margin: 6px 0 0; font-size: clamp(26px, 4vw, 34px); }
+    .turn-counter { padding: 9px 13px; border-radius: 999px; background: var(--green-soft); color: var(--green-dark); font-size: 12px; font-weight: 750; white-space: nowrap; }
+    .game-layout { display: grid; grid-template-columns: minmax(210px, .75fr) minmax(340px, 1.25fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
+    .players-panel, .actions-panel { padding: 22px; }
+    .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .panel-heading h2 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
+    .panel-heading span { color: var(--muted); font-size: 11px; }
+    .player-list { display: grid; gap: 10px; }
+    .player-card { position: relative; overflow: hidden; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: white; transition: border-color .2s, background .2s, transform .2s; }
+    .player-card.current { border-color: #8bc6a0; background: #f1f8f1; box-shadow: inset 3px 0 var(--green); }
+    .player-top { display: flex; align-items: center; gap: 10px; }
+    .player-avatar { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 11px; background: #f0eee4; color: #69705f; font-size: 12px; font-weight: 800; }
+    .player-card.current .player-avatar { background: var(--green); color: white; }
+    .player-name { overflow: hidden; font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .player-tag { display: none; margin-top: 3px; color: var(--green-dark); font-size: 10px; font-weight: 750; }
+    .player-card.current .player-tag { display: block; }
+    .balance { margin: 14px 0 0 44px; font-size: 22px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .balance small { margin-left: 4px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0; }
+    .actions-panel { min-height: 300px; }
+    .action-tabs { display: flex; gap: 5px; padding: 4px; border-radius: 12px; background: #f0f1eb; }
+    .tab { flex: 1; min-height: 36px; border: 0; border-radius: 9px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; }
+    .tab.selected { color: var(--ink); background: white; box-shadow: 0 2px 6px #24332812; }
+    .action-form { display: none; padding-top: 22px; }
+    .action-form.selected { display: block; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+    .action-form .field select, .action-form .field input { min-height: 47px; }
+    .currency-input { position: relative; }
+    .currency-input input { padding-right: 38px; }
+    .currency-input::after { position: absolute; top: 50%; right: 13px; color: var(--muted); content: "€"; transform: translateY(-50%); pointer-events: none; }
+    .action-note { margin: 14px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .submit-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
+    .submit-row .primary { min-width: 148px; }
+    .turn-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 15px 18px; border: 1px solid var(--line); border-radius: 17px; background: rgb(255 254 250 / 75%); }
+    .turn-footer strong { font-size: 12px; }
+    .turn-footer p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .history { margin-top: 18px; }
+    .history-list { display: grid; gap: 0; }
+    .history-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid #eceee7; font-size: 11px; }
+    .history-row span:first-child { color: #4a574d; }
+    .history-row span:last-child { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .empty-history { padding: 15px 0 2px; color: var(--muted); font-size: 11px; }
+    .toast { position: fixed; right: 20px; bottom: 20px; z-index: 3; max-width: min(400px, calc(100vw - 40px)); padding: 12px 16px; border-radius: 12px; color: white; background: #23382b; box-shadow: var(--shadow); font-size: 13px; opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s, transform .2s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .hidden { display: none !important; }
+
+    @media (max-width: 720px) {
+      .shell { width: min(520px, calc(100% - 30px)); margin: 0 auto; padding-top: 17px; padding-bottom: calc(44px + env(safe-area-inset-bottom)); }
+      .topbar { margin-bottom: 19px; }
+      .status-pill { padding: 8px 10px; font-size: 10px; }
+      .setup-wrap { min-height: 0; }
+      .setup-card { padding: 23px 18px; border-radius: 22px; }
+      .setup-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .players-fields { grid-template-columns: 1fr; }
+      .player-setup { grid-template-columns: 1fr 120px; }
+      .setup-footer { flex-wrap: wrap; }
+      .hint { width: 100%; }
+      #setupForm .setup-footer .primary { width: 100%; }
+      .game-layout { grid-template-columns: 1fr; }
+      .players-panel { order: 0; }
+      .actions-panel { order: 1; }
+      .player-list { grid-template-columns: 1fr 1fr; }
+      .players-panel, .actions-panel { padding: 17px; border-radius: 18px; }
+      .player-card { padding: 11px; }
+      .balance { margin: 11px 0 0 0; font-size: 18px; }
+      .game-heading { align-items: center; }
+      .tab { min-height: 44px; }
+    }
+
+    @media (max-width: 390px) {
+      .setup-grid { grid-template-columns: 1fr; }
+      .player-list { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .turn-footer { flex-direction: column; align-items: stretch; }
+      .turn-footer .secondary { width: 100%; }
+      .submit-row { flex-direction: column; align-items: stretch; }
+      .submit-row .primary { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">€</div>
+        <div>
+          <div class="brand-name">Spielbank</div>
+          <div class="brand-caption">Deine digitale Monopoly-Bank</div>
+        </div>
+      </div>
+      <div class="status-pill"><span class="status-dot"></span><span id="topStatus">Bereit für eine Runde</span></div>
+    </header>
+
+    <section class="setup-wrap" id="setupScreen">
+      <form class="setup-card" id="setupForm">
+        <div class="eyebrow">Los geht's</div>
+        <h1>Wer spielt heute mit?</h1>
+        <p class="intro">Richte eure Runde ein. Kontostände und Spielreihenfolge lassen sich jederzeit auf dem Spielbildschirm verfolgen.</p>
+
+        <div class="setup-grid">
+          <div class="field">
+            <label for="playerCount">Anzahl Spieler</label>
+            <select id="playerCount">
+              <option value="2">2 Spieler</option>
+              <option value="3">3 Spieler</option>
+              <option value="4">4 Spieler</option>
+            </select>
+          </div>
+          <div class="field conditional visible" id="sharedStartWrap">
+            <label for="sharedStart">Startguthaben pro Person</label>
+            <div class="currency-input"><input id="sharedStart" type="number" min="0" step="100" value="15000" inputmode="numeric"></div>
+          </div>
+        </div>
+
+        <div class="mode-row">
+          <div class="mode-copy">
+            <strong>Spiel fortführen</strong>
+            <span>Eigene Kontostände und die Person am Zug festlegen, statt zufällig neu zu starten.</span>
+          </div>
+          <label class="switch" aria-label="Spiel fortführen">
+            <input id="continueGame" type="checkbox">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+
+        <div class="players-fields" id="setupPlayers"></div>
+        <div class="field conditional" id="firstPlayerWrap" style="margin-top: 18px;">
+          <label for="firstPlayer">Wer ist als Nächstes dran?</label>
+          <select id="firstPlayer"></select>
+        </div>
+
+        <div class="setup-footer">
+          <div class="setup-guidance">
+            <span class="hint" id="setupHint">Wer anfängt, wird zufällig ausgelost.</span>
+            <span class="chance-display" id="chanceDisplay"></span>
+          </div>
+          <button class="primary" type="submit">Spiel starten <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </section>
+
+    <section class="game" id="gameScreen" aria-live="polite">
+      <div class="game-heading">
+        <div>
+          <div class="eyebrow">Eure Runde</div>
+          <h1>Spielübersicht</h1>
+        </div>
+        <div class="turn-counter" id="turnCounter">Zug 1</div>
+      </div>
+      <div class="game-layout">
+        <section class="panel players-panel">
+          <div class="panel-heading">
+            <h2>Spieler &amp; Guthaben</h2>
+            <span id="playerCountLabel"></span>
+          </div>
+          <div class="player-list" id="playerList"></div>
+        </section>
+        <section class="panel actions-panel">
+          <div class="panel-heading">
+            <h2 id="activeHeading">Aktion für ...</h2>
+            <span>Dein Zug</span>
+          </div>
+          <div class="action-tabs" role="tablist" aria-label="Aktion auswählen">
+            <button type="button" class="tab selected" data-tab="bank" role="tab" aria-selected="true">Bankzahlung</button>
+            <button type="button" class="tab" data-tab="transfer" role="tab" aria-selected="false">Überweisen</button>
+          </div>
+
+          <form class="action-form selected" id="bankForm">
+            <div class="field">
+              <span class="field-title">Welche Zahlung?</span>
+              <select id="bankDirection">
+                <option value="receive">Geld von der Bank erhalten</option>
+                <option value="pay">Geld an die Bank zahlen</option>
+              </select>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="bankAmount">Betrag</label>
+                <div class="currency-input"><input id="bankAmount" type="number" min="0" step="100" value="4000" inputmode="numeric" required></div>
+              </div>
+              <div class="field">
+                <label for="bankReason">Grund (optional)</label>
+                <input id="bankReason" type="text" maxlength="40" placeholder="z. B. Über Los">
+              </div>
+            </div>
+            <p class="action-note">Der Betrag wird dem Konto der Person am Zug gutgeschrieben oder davon abgezogen.</p>
+            <div class="submit-row"><span></span><button class="primary" type="submit">Buchen <span aria-hidden="true">→</span></button></div>
+          </form>
+
+          <form class="action-form" id="transferForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="recipient">Geld überweisen an</label>
+                <select id="recipient" required></select>
+              </div>
+              <div class="field">
+                <label for="transferAmount">Betrag</label>
+                <div class="currency-input"><input id="transferAmount" type="number" min="0" step="100" value="1000" inputmode="numeric" required></div>
+              </div>
+            </div>
+            <p class="action-note">Geld wird vom Konto der Person am Zug abgezogen und der ausgewählten Person gutgeschrieben.</p>
+            <div class="submit-row"><span></span><button class="primary" type="submit">Überweisen <span aria-hidden="true">→</span></button></div>
+          </form>
+
+          <div class="turn-footer">
+            <div><strong id="nextTurnText">Danach ist ... dran</strong><p>Die Zugreihenfolge läuft der Reihe nach weiter.</p></div>
+            <button class="secondary" id="endTurn" type="button">Zug beenden <span aria-hidden="true">→</span></button>
+          </div>
+          <section class="history">
+            <div class="panel-heading"><h2>Letzte Buchungen</h2><span id="historyCount"></span></div>
+            <div class="history-list" id="historyList"><div class="empty-history">Noch keine Buchungen.</div></div>
+          </section>
+        </section>
+      </div>
+      <div class="setup-footer" style="margin-top: 16px;">
+        <span class="hint">Euer Spielstand wird automatisch auf diesem Gerät gespeichert.</span>
+        <button class="quiet-button" id="newGame" type="button">Neues Spiel</button>
+      </div>
+    </section>
+    <div class="toast" id="toast" role="status"></div>
+  </main>
+  <script>
+    (() => {
+      const STORAGE_KEY = "spielbank-save-v1";
+      const names = ["Spieler 1", "Spieler 2", "Spieler 3", "Spieler 4"];
+      let state = null;
+      let toastTimer;
+
+      const $ = (selector) => document.querySelector(selector);
+      const setupScreen = $("#setupScreen");
+      const gameScreen = $("#gameScreen");
+      const setupPlayers = $("#setupPlayers");
+      const continueInput = $("#continueGame");
+      let serviceWorkerError = null;
+      const serviceWorkerRegistration = window.isSecureContext && "serviceWorker" in navigator
+        ? navigator.serviceWorker.register("./service-worker.js").catch((error) => {
+          serviceWorkerError = error;
+          console.error("Service Worker konnte nicht registriert werden.", error);
+          return null;
+        })
+        : Promise.resolve(null);
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[character]);
+      }
+
+      function formatMoney(amount) {
+        return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(amount) + " €";
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+          showToast("Spielstand konnte nicht gespeichert werden.");
+          console.error("Spielstand konnte nicht gespeichert werden.", error);
+        }
+      }
+
+      function showToast(message) {
+        const toast = $("#toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+
+      async function notifyGame(title, message, androidMethod) {
+        if (window.MonopolyAndroid && typeof window.MonopolyAndroid[androidMethod] === "function") {
+          window.MonopolyAndroid[androidMethod]();
+          return;
+        }
+        if (!window.isSecureContext || !("serviceWorker" in navigator) || !("Notification" in window)) {
+          showToast("Benachrichtigungen benötigen HTTPS oder localhost und einen unterstützten Browser.");
+          return;
+        }
+        try {
+          let permission = Notification.permission;
+          if (permission === "default") {
+            permission = await Notification.requestPermission();
+          }
+          if (permission !== "granted") {
+            showToast("Erlaube Benachrichtigungen in den Browser-Einstellungen.");
+            return;
+          }
+          const registration = await serviceWorkerRegistration;
+          if (!registration) {
+            showToast(serviceWorkerError
+              ? "Benachrichtigungen konnten nicht eingerichtet werden. Bitte lade die Seite neu."
+              : "Der Browser unterstützt keine Service Worker.");
+            return;
+          }
+          await registration.showNotification(title, { body: message, tag: "monopoly-game-status" });
+        } catch (error) {
+          console.error("Benachrichtigung konnte nicht angezeigt werden.", error);
+          showToast("Benachrichtigung konnte nicht angezeigt werden.");
+        }
+      }
+
+      function renderSetupPlayers() {
+        const count = Number($("#playerCount").value);
+        const continuing = continueInput.checked;
+        setupPlayers.innerHTML = "";
+        $("#sharedStartWrap").classList.toggle("visible", !continuing);
+        $("#firstPlayerWrap").classList.toggle("visible", continuing);
+        $("#setupHint").textContent = continuing
+          ? "Die Spielreihenfolge beginnt bei der ausgewählten Person."
+          : "Wer anfängt, wird zufällig ausgelost.";
+        $("#chanceDisplay").classList.toggle("hidden", continuing);
+
+        for (let index = 0; index < count; index += 1) {
+          const entry = document.createElement("div");
+          entry.className = "player-setup";
+          entry.innerHTML = `
+            <div class="field">
+              <label for="playerName${index}">Name ${index + 1}</label>
+              <input id="playerName${index}" maxlength="24" value="${escapeHtml(names[index])}" required>
+            </div>
+            ${continuing ? `
+              <div class="field">
+                <label for="playerCash${index}">Guthaben (€)</label>
+                <input id="playerCash${index}" type="number" min="0" step="100" value="15000" inputmode="numeric" required>
+              </div>` : ""}
+          `;
+          setupPlayers.append(entry);
+        }
+        renderFirstPlayerOptions();
+        renderChance();
+      }
+
+      function renderChance() {
+        const count = Number($("#playerCount").value);
+        const chance = Math.round(100 / count);
+        $("#chanceDisplay").textContent = `Startchance: ${Array.from({ length: count }, (_, index) =>
+          `${getSetupName(index)} ${chance} %`).join(" · ")}`;
+      }
+
+      function renderFirstPlayerOptions() {
+        const firstPlayer = $("#firstPlayer");
+        const selected = firstPlayer.value;
+        firstPlayer.innerHTML = "";
+        const count = Number($("#playerCount").value);
+        for (let index = 0; index < count; index += 1) {
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = names[index];
+          firstPlayer.append(option);
+        }
+        if (selected && Number(selected) < count) firstPlayer.value = selected;
+      }
+
+      function getSetupName(index) {
+        return $(`#playerName${index}`).value.trim() || `Spieler ${index + 1}`;
+      }
+
+      function startGame(event) {
+        event.preventDefault();
+        const count = Number($("#playerCount").value);
+        const continuing = continueInput.checked;
+        const playerList = Array.from({ length: count }, (_, index) => ({
+          name: getSetupName(index),
+          balance: continuing
+            ? Number($(`#playerCash${index}`).value)
+            : Number($("#sharedStart").value)
+        }));
+        const first = continuing ? Number($("#firstPlayer").value) : Math.floor(Math.random() * count);
+        if (playerList.some((player) => !Number.isFinite(player.balance) || player.balance < 0)) {
+          showToast("Bitte gib gültige Guthaben ab 0 € ein.");
+          return;
+        }
+        if (!continuing && (!Number.isFinite(playerList[0].balance) || playerList[0].balance < 0)) {
+          showToast("Bitte gib ein gültiges Startguthaben ab 0 € ein.");
+          return;
+        }
+        state = { players: playerList, active: first, turn: 1, history: [] };
+        saveState();
+        renderGame();
+        showToast(continuing ? "Spielstand eingerichtet." : `${playerList[first].name} fängt an!`);
+        notifyGame("Spiel gestartet", "Eure Monopoly-Runde hat begonnen.", "startGameNotification");
+      }
+
+      function renderGame() {
+        if (!state) return;
+        setupScreen.classList.add("hidden");
+        gameScreen.classList.add("active");
+        $("#topStatus").textContent = "Spiel läuft";
+        $("#playerCountLabel").textContent = `${state.players.length} am Tisch`;
+        $("#turnCounter").textContent = `Zug ${state.turn}`;
+        $("#activeHeading").textContent = `Aktion für ${state.players[state.active].name}`;
+        const next = state.players[(state.active + 1) % state.players.length].name;
+        $("#nextTurnText").textContent = `Danach ist ${next} dran`;
+        $("#playerList").innerHTML = state.players.map((player, index) => `
+          <article class="player-card ${index === state.active ? "current" : ""}">
+            <div class="player-top">
+              <div class="player-avatar">${escapeHtml(player.name.trim().slice(0, 1).toLocaleUpperCase("de-DE") || "?")}</div>
+              <div>
+                <div class="player-name">${escapeHtml(player.name)}</div>
+                <div class="player-tag">● Am Zug</div>
+              </div>
+            </div>
+            <div class="balance">${formatMoney(player.balance)}<small>Guthaben</small></div>
+          </article>
+        `).join("");
+        const recipient = $("#recipient");
+        const previousRecipient = recipient.value;
+        recipient.innerHTML = state.players.map((player, index) => index === state.active ? "" :
+          `<option value="${index}">${escapeHtml(player.name)}</option>`).join("");
+        if (state.players.some((player, index) => String(index) === previousRecipient && index !== state.active)) {
+          recipient.value = previousRecipient;
+        }
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const historyList = $("#historyList");
+        const entries = state.history.slice(0, 5);
+        $("#historyCount").textContent = state.history.length ? `${state.history.length} gesamt` : "";
+        historyList.innerHTML = entries.length ? entries.map((entry) => `
+          <div class="history-row">
+            <span>${escapeHtml(entry.description)}</span>
+            <span>${escapeHtml(entry.amount)}</span>
+          </div>
+        `).join("") : '<div class="empty-history">Noch keine Buchungen.</div>';
+      }
+
+      function addHistory(description, amount) {
+        state.history.unshift({ description, amount: `${amount > 0 ? "+" : "−"}${formatMoney(Math.abs(amount))}` });
+        saveState();
+        renderGame();
+      }
+
+      function bookBankPayment(event) {
+        event.preventDefault();
+        const amount = Number($("#bankAmount").value);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          showToast("Bitte gib einen Betrag größer als 0 ein.");
+          return;
+        }
+        const player = state.players[state.active];
+        const direction = $("#bankDirection").value;
+        const signedAmount = direction === "receive" ? amount : -amount;
+        player.balance += signedAmount;
+        const reason = $("#bankReason").value.trim();
+        const label = direction === "receive" ? "Bank →" : "→ Bank";
+        addHistory(`${player.name} ${label}${reason ? ` · ${reason}` : ""}`, signedAmount);
+        $("#bankReason").value = "";
+        showToast(`${formatMoney(amount)} gebucht.`);
+      }
+
+      function makeTransfer(event) {
+        event.preventDefault();
+        const amount = Number($("#transferAmount").value);
+        const recipientIndex = Number($("#recipient").value);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          showToast("Bitte gib einen Betrag größer als 0 ein.");
+          return;
+        }
+        if (!Number.isInteger(recipientIndex) || recipientIndex === state.active || !state.players[recipientIndex]) {
+          showToast("Bitte wähle eine andere Person als Empfänger.");
+          return;
+        }
+        const sender = state.players[state.active];
+        const recipient = state.players[recipientIndex];
+        sender.balance -= amount;
+        recipient.balance += amount;
+        addHistory(`${sender.name} → ${recipient.name}`, amount);
+        showToast(`${formatMoney(amount)} an ${recipient.name} überwiesen.`);
+      }
+
+      function endTurn() {
+        state.active = (state.active + 1) % state.players.length;
+        if (state.active === 0) state.turn += 1;
+        saveState();
+        renderGame();
+      }
+
+      $("#playerCount").addEventListener("change", renderSetupPlayers);
+      continueInput.addEventListener("change", renderSetupPlayers);
+      setupPlayers.addEventListener("input", (event) => {
+        if (event.target.id.startsWith("playerName")) {
+          const index = Number(event.target.id.replace("playerName", ""));
+          names[index] = event.target.value.trim() || `Spieler ${index + 1}`;
+          renderFirstPlayerOptions();
+          renderChance();
+        }
+      });
+      $("#setupForm").addEventListener("submit", startGame);
+      $("#bankForm").addEventListener("submit", bookBankPayment);
+      $("#transferForm").addEventListener("submit", makeTransfer);
+      $("#endTurn").addEventListener("click", endTurn);
+      $("#newGame").addEventListener("click", () => {
+        if (!window.confirm("Neues Spiel starten? Der aktuelle Spielstand wird ersetzt.")) return;
+        state = null;
+        notifyGame("Spiel zurückgesetzt", "Ein neues Spiel kann gestartet werden.", "endGameNotification");
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.error("Alter Spielstand konnte nicht entfernt werden.", error);
+          showToast("Der alte Spielstand konnte nicht entfernt werden.");
+          return;
+        }
+        gameScreen.classList.remove("active");
+        setupScreen.classList.remove("hidden");
+        $("#topStatus").textContent = "Bereit für eine Runde";
+        renderSetupPlayers();
+      });
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((item) => {
+            const selected = item === tab;
+            item.classList.toggle("selected", selected);
+            item.setAttribute("aria-selected", String(selected));
+          });
+          $("#bankForm").classList.toggle("selected", tab.dataset.tab === "bank");
+          $("#transferForm").classList.toggle("selected", tab.dataset.tab === "transfer");
+        });
+      });
+
+      renderSetupPlayers();
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const valid = parsed && Array.isArray(parsed.players) && parsed.players.length >= 2 &&
+            parsed.players.length <= 4 && Number.isInteger(parsed.active) && parsed.active >= 0 &&
+            parsed.active < parsed.players.length && parsed.players.every((player) =>
+              typeof player.name === "string" && Number.isFinite(player.balance)) &&
+            Number.isInteger(parsed.turn) && parsed.turn > 0 && Array.isArray(parsed.history);
+          if (valid) {
+            state = parsed;
+            renderGame();
+          } else {
+            console.error("Gespeicherter Spielstand hat ein ungültiges Format.");
+            showToast("Gespeicherter Spielstand ist ungültig. Bitte starte ein neues Spiel.");
+          }
+        }
+      } catch (error) {
+        console.error("Spielstand konnte nicht geladen werden.", error);
+        showToast("Spielstand konnte nicht geladen werden.");
+      }
+    })();
+  </script>
+</body>
+</html>
